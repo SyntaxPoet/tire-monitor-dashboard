@@ -7,6 +7,7 @@ import { TireCamera } from '@/components/camera/TireCamera'
 import { RecentActivity } from '@/components/dashboard/RecentActivity'
 import { TireHealthChart } from '@/components/dashboard/TireHealthChart'
 import { AddVehicleForm } from '@/components/dashboard/AddVehicleForm'
+import { ContinuousLearningStats } from '@/components/dashboard/ContinuousLearningStats'
 import { Car, Camera, BarChart3, Settings, Plus } from 'lucide-react'
 
 interface Vehicle {
@@ -292,6 +293,15 @@ export default function Home() {
               <p className="text-xs text-muted-foreground">Issues detected</p>
             </CardContent>
           </Card>
+        </div>
+
+        {/* AI Learning Section */}
+        <div className="mb-8">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-900">AI Learning Progress</h2>
+            <p className="text-sm text-gray-600">See how your tire photos are helping the AI get smarter</p>
+          </div>
+          <ContinuousLearningStats />
         </div>
 
         {/* Vehicles Section */}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { saveTireImage } from '@/utils/file-utils'
+import { continuousLearning } from '@/lib/ml/continuous-learning'
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,6 +42,38 @@ export async function POST(request: NextRequest) {
         processed: false
       }
     })
+
+    // 🎯 CONTINUOUS LEARNING INTEGRATION
+    // Automatically save photo for ML training in the background
+    try {
+      // Extract additional context from form data
+      const userContext = {
+        deviceInfo: formData.get('deviceInfo'),
+        lighting: formData.get('lighting'),
+        angle: formData.get('angle'),
+        userId: formData.get('userId')
+      };
+
+      // This happens asynchronously and doesn't block the response
+      continuousLearning.onPhotoCaptured(tireId, file, userContext)
+        .then((trainingSample) => {
+          console.log(`🧠 Photo saved for continuous learning: ${trainingSample?.id}`);
+
+          // Mark photo as processed for ML training
+          prisma.tirePhoto.update({
+            where: { id: photo.id },
+            data: { processed: true }
+          }).catch(err => console.error('Failed to update photo processed status:', err));
+        })
+        .catch((error) => {
+          console.error('❌ Continuous learning failed:', error);
+          // Don't fail the entire request if ML training fails
+        });
+
+    } catch (error) {
+      console.error('❌ Continuous learning integration error:', error);
+      // Continue with normal response even if ML fails
+    }
 
     return NextResponse.json(photo)
   } catch (error) {

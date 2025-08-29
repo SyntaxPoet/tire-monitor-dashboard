@@ -85,6 +85,38 @@ A comprehensive tire monitoring application that uses AI-powered image analysis 
 - **Photos Today**: Number of photos taken in the current day
 - **Alerts**: Number of tires requiring attention
 
+### AI Learning Progress
+The dashboard includes an **AI Learning Progress** section that shows:
+- **Training Samples**: How many photos have been saved for AI training
+- **User Ratings**: Number of times users have rated AI analysis results
+- **Expert Validations**: Photos with expert corrections
+- **Retraining Status**: When the AI will next improve its models
+
+## 🧠 Continuous Learning System
+
+Your Tire Monitor uses a sophisticated **Continuous Learning System** that gets smarter every time you use it:
+
+### How It Works
+1. **Automatic Data Collection**: Every tire photo you take is automatically saved for AI training
+2. **Real-time Analysis**: Photos are analyzed immediately using current ML models
+3. **User Feedback Loop**: Rate the AI's analysis (1-5 stars) to help it learn
+4. **Smart Retraining**: When enough new data is collected, models automatically retrain
+5. **Progressive Improvement**: AI accuracy increases over time with your usage
+
+### Training Data Collection
+The system collects:
+- **High-quality images** (automatically resized and processed)
+- **Context metadata** (lighting, angle, device info)
+- **Ground truth labels** from user feedback and corrections
+- **Performance metrics** to track AI improvement
+
+### User Feedback Integration
+When you rate an analysis result:
+- ✅ **High ratings** (4-5 stars) reinforce good predictions
+- ⚠️ **Medium ratings** (2-3 stars) help identify areas for improvement
+- ❌ **Low ratings** (1 star) with corrections provide valuable learning data
+- 🔧 **Expert corrections** (actual measurements) create gold-standard training data
+
 ### Reading Health Charts
 - **Blue Line**: Overall tire health percentage
 - **Green Line**: Tread depth in millimeters
@@ -195,8 +227,17 @@ docker run -p 3000:3000 tire-monitor
 
 ## 🔮 Future Enhancements
 
+### Completed Features ✅
+- [x] **Advanced Computer Vision**: TensorFlow.js ML models for tire analysis
+- [x] **MLOps Pipeline**: Automated model training, evaluation, and deployment
+- [x] **Real-time ML Analysis**: Live tire condition assessment
+- [x] **Data Collection System**: Automated training data gathering
+- [x] **Model Evaluation**: Comprehensive performance metrics and reports
+- [x] **Continuous Learning**: AI improves automatically with every photo taken
+- [x] **User Feedback Loop**: Rate analysis results to help AI learn
+- [x] **Smart Retraining**: Automatic model updates when enough data is available
+
 ### Planned Features
-- [ ] **Advanced Computer Vision**: Integration with TensorFlow.js for better analysis
 - [ ] **Pressure Monitoring**: Tire pressure sensor integration
 - [ ] **Maintenance Scheduling**: Automated service reminders
 - [ ] **Weather Integration**: Impact analysis based on driving conditions
