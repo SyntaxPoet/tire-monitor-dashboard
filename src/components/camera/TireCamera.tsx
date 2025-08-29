@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useCallback, useEffect } from 'react'
+import React, { useRef, useState, useCallback, useEffect } from 'react'
 import Webcam from 'react-webcam'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,6 +11,13 @@ interface TireCameraProps {
   tirePosition?: string
 }
 
+interface BrowserCompatibilityInfo {
+  supportsCamera: boolean
+  browserName: string
+  browserVersion: string
+  recommendations: string[]
+}
+
 export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
   const webcamRef = useRef<Webcam>(null)
   const [capturedImage, setCapturedImage] = useState<string | null>(null)
@@ -18,6 +25,79 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
   const [error, setError] = useState<string | null>(null)
   const [hasPermission, setHasPermission] = useState<boolean | null>(null)
   const [isRequestingPermission, setIsRequestingPermission] = useState(false)
+  const [browserCompatibility, setBrowserCompatibility] = useState<BrowserCompatibilityInfo | null>(null)
+
+  // Browser detection helper
+  const getBrowserInfo = () => {
+    const ua = navigator.userAgent
+    let browser = 'Unknown'
+    let version = 'Unknown'
+
+    // Detect browser
+    if (ua.includes('Chrome')) {
+      browser = 'Chrome'
+      const match = ua.match(/Chrome\/(\d+)/)
+      version = match ? match[1] : 'Unknown'
+    } else if (ua.includes('Firefox')) {
+      browser = 'Firefox'
+      const match = ua.match(/Firefox\/(\d+)/)
+      version = match ? match[1] : 'Unknown'
+    } else if (ua.includes('Safari') && !ua.includes('Chrome')) {
+      browser = 'Safari'
+      const match = ua.match(/Version\/(\d+)/)
+      version = match ? match[1] : 'Unknown'
+    } else if (ua.includes('Edge')) {
+      browser = 'Edge'
+      const match = ua.match(/Edge\/(\d+)/)
+      version = match ? match[1] : 'Unknown'
+    } else if (ua.includes('Opera')) {
+      browser = 'Opera'
+      const match = ua.match(/Opera\/(\d+)/)
+      version = match ? match[1] : 'Unknown'
+    }
+
+    return { name: browser, version }
+  }
+
+  // Check browser compatibility
+  const checkBrowserCompatibility = (): BrowserCompatibilityInfo => {
+    const browserInfo = getBrowserInfo()
+    const supportsCamera = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
+
+    let recommendations: string[] = []
+
+    if (!supportsCamera) {
+      recommendations = [
+        'Use Chrome (recommended) - Download from google.com/chrome',
+        'Use Firefox - Download from mozilla.org/firefox',
+        'Use Safari (iOS/Mac) - Already installed on Apple devices',
+        'Avoid Internet Explorer, older Edge versions',
+        'Update your browser to the latest version'
+      ]
+    }
+
+    return {
+      supportsCamera,
+      browserName: browserInfo.name,
+      browserVersion: browserInfo.version,
+      recommendations
+    }
+  }
+
+  // Handle file upload as fallback
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file && file.type.startsWith('image/')) {
+      console.log('📸 File upload: Processing uploaded image')
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        const imageData = e.target?.result as string
+        onCapture(imageData, file)
+        setCapturedImage(imageData)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
 
   const capture = useCallback(() => {
     console.log('📸 Camera: Capture button clicked')
@@ -66,7 +146,8 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
     try {
       // Check if getUserMedia is supported
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        throw new Error('Camera not supported on this device/browser')
+        const browserInfo = getBrowserInfo()
+        throw new Error(`GetUserMedia is not implemented in this browser (${browserInfo.name} ${browserInfo.version}). Camera access requires a modern browser with WebRTC support.`)
       }
 
       // Try different constraint approaches for better compatibility
@@ -181,6 +262,15 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
           'Check if you\'re on the same WiFi network as the server',
           'Try a different browser'
         ]
+      } else if (err.message?.includes('GetUserMedia is not implemented')) {
+        errorMessage = 'Camera not supported in this browser'
+        troubleshootingSteps = [
+          '✅ RECOMMENDED: Use Chrome, Firefox, or Safari',
+          '✅ Update your browser to the latest version',
+          '✅ Try on a different device with a modern browser',
+          'ℹ️  Some browsers (especially older versions) don\'t support camera access',
+          'ℹ️  Check if you\'re using an embedded browser or app'
+        ]
       } else if (err.message?.includes('Camera not supported')) {
         errorMessage = 'Camera not supported on this browser'
         troubleshootingSteps = [
@@ -205,10 +295,12 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
     }
   }, [])
 
-  // Initialize camera permission status
+  // Initialize camera permission status and check browser compatibility
   useEffect(() => {
-    // Just set initial state, don't auto-request permissions
-    console.log('📸 Camera: Component mounted, waiting for user interaction')
+    const compatibility = checkBrowserCompatibility()
+    setBrowserCompatibility(compatibility)
+    console.log('📸 Camera: Component mounted')
+    console.log('📸 Browser Compatibility:', compatibility)
   }, [])
 
   // Mark that user has interacted when they click anything
@@ -226,6 +318,26 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Browser Compatibility Warning */}
+        {browserCompatibility && !browserCompatibility.supportsCamera && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
+            <p className="text-amber-800 text-sm font-medium">
+              ⚠️ Camera Not Supported in {browserCompatibility.browserName}
+            </p>
+            <div className="mt-2 text-xs text-amber-700">
+              <p className="font-medium mb-1">Recommended Browsers:</p>
+              <ul className="list-disc list-inside space-y-1">
+                {browserCompatibility.recommendations.slice(0, 3).map((rec, i) => (
+                  <li key={i}>{rec}</li>
+                ))}
+              </ul>
+              <p className="mt-2 text-blue-600 font-medium">
+                💡 Or use the file upload option below
+              </p>
+            </div>
+          </div>
+        )}
+
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3">
             <p className="text-red-800 text-sm font-medium">{error}</p>
@@ -306,25 +418,43 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
                 <p>Device: {typeof window !== 'undefined' ? (window.navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop') : 'Unknown'}</p>
               </div>
 
-              {/* Permission Request Button */}
-              {hasPermission === false && (
-                <div className="mb-4">
-                  <Button
-                    onClick={() => {
-                      handleUserInteraction()
-                      requestCameraPermission()
-                    }}
-                    disabled={isRequestingPermission}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    {isRequestingPermission ? '🔄 Requesting Camera Access...' : '📷 Grant Camera Access'}
-                  </Button>
-                  <p className="text-xs text-gray-500 mt-2 text-center">
-                    Click to manually request camera permissions
-                  </p>
-                </div>
-              )}
+                                   {/* Permission Request Button */}
+                     {hasPermission === false && (
+                       <div className="mb-4 space-y-3">
+                         <Button
+                           onClick={() => {
+                             handleUserInteraction()
+                             requestCameraPermission()
+                           }}
+                           disabled={isRequestingPermission}
+                           variant="outline"
+                           className="w-full"
+                         >
+                           {isRequestingPermission ? '🔄 Requesting Camera Access...' : '📷 Grant Camera Access'}
+                         </Button>
+                         <p className="text-xs text-gray-500 text-center">
+                           Click to manually request camera permissions
+                         </p>
+
+                         {/* File Upload Fallback */}
+                         {browserCompatibility && !browserCompatibility.supportsCamera && (
+                           <div className="border-t pt-3 mt-3">
+                             <p className="text-sm font-medium text-gray-700 mb-2">
+                               📁 Alternative: Upload Photo from Device
+                             </p>
+                             <input
+                               type="file"
+                               accept="image/*"
+                               onChange={handleFileUpload}
+                               className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                             />
+                             <p className="text-xs text-gray-500 mt-1">
+                               Choose an existing photo from your device
+                             </p>
+                           </div>
+                         )}
+                       </div>
+                     )}
               <Button
                 onClick={() => {
                   handleUserInteraction()
