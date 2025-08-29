@@ -1,5 +1,48 @@
 # 🚨 Tire Monitor - Critical Debugging Guide
 
+## 📱 iOS Safari Camera Setup (MOST IMPORTANT FOR MOBILE USERS)
+
+### **⚠️ CRITICAL: iOS Safari Camera Permissions**
+
+**If you're using iPhone/iPad and getting camera errors, follow these steps FIRST:**
+
+#### **Step 1: Enable Camera in Safari Settings**
+```
+Settings App → Safari → Camera → Allow
+```
+
+#### **Step 2: Clear Safari Data (Important!)**
+```
+Settings → Safari → Clear History and Website Data
+```
+
+#### **Step 3: Test Camera Access**
+1. Open Safari on your iPhone/iPad
+2. Navigate to your tire monitor app
+3. Click any tire position (Front Left, Front Right, etc.)
+4. Tap the "📷 Grant Camera Access" button
+5. **Allow** the camera permission when Safari prompts you
+6. **Check Safari's address bar** - there might be a camera icon to tap
+
+#### **Step 4: Alternative Browsers**
+- **Chrome for iOS**: Download from App Store (better camera support)
+- **Firefox for iOS**: Alternative option with good camera support
+
+### **🔧 iOS Safari Troubleshooting:**
+
+**✅ Make sure you're using Safari (not Chrome)**
+**✅ Check: Settings → Safari → Camera → "Allow"**
+**✅ Try: Airplane mode on/off to reset permissions**
+**✅ Ensure: You're on HTTPS (camera requires secure connection)**
+
+### **🎯 Quick iOS Safari Fix:**
+1. **Settings → Safari → Camera → Allow**
+2. **Settings → Safari → Clear History and Website Data**
+3. **Restart Safari completely**
+4. **Try camera access again**
+
+---
+
 ## 🔥 Most Common Issues & Immediate Checks
 
 ### 1. **"Network Error" When Adding Vehicles**
