@@ -69,15 +69,60 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
         throw new Error('Camera not supported on this device/browser')
       }
 
-      // Request camera permission explicitly
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: 1280,
-          height: 720,
-          facingMode: 'environment' // Use back camera on mobile
+      // Try different constraint approaches for better compatibility
+      const constraints = [
+        // First try: Back camera with specific resolution
+        {
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: { exact: 'environment' }
+          },
+          audio: false
         },
-        audio: false
-      })
+        // Second try: Back camera without exact constraint
+        {
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            facingMode: 'environment'
+          },
+          audio: false
+        },
+        // Third try: Any camera
+        {
+          video: {
+            width: { ideal: 640 },
+            height: { ideal: 480 }
+          },
+          audio: false
+        },
+        // Last try: Basic video
+        {
+          video: true,
+          audio: false
+        }
+      ]
+
+      let stream = null
+      let lastError = null
+
+      // Try each constraint until one works
+      for (const constraint of constraints) {
+        try {
+          console.log('📸 Camera: Trying constraint:', constraint)
+          stream = await navigator.mediaDevices.getUserMedia(constraint)
+          console.log('📸 Camera: Constraint worked!')
+          break
+        } catch (err) {
+          console.log('📸 Camera: Constraint failed:', err.message)
+          lastError = err
+        }
+      }
+
+      if (!stream) {
+        throw lastError || new Error('All camera constraints failed')
+      }
 
       console.log('📸 Camera: Permission granted successfully')
 
@@ -98,41 +143,73 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
       console.error('📸 Camera: Permission request failed:', err)
 
       let errorMessage = 'Camera permission denied or failed'
+      let troubleshootingSteps = []
 
       if (err.name === 'NotAllowedError') {
-        errorMessage = 'Camera access denied. Please allow camera permissions in your browser settings.'
+        errorMessage = 'Camera access denied by user or browser'
+        troubleshootingSteps = [
+          'Click "Allow" in the browser popup (if shown)',
+          'Check browser settings for camera permissions',
+          'Try refreshing the page and clicking again',
+          'Make sure no other app is using the camera'
+        ]
       } else if (err.name === 'NotFoundError') {
-        errorMessage = 'No camera found on this device.'
+        errorMessage = 'No camera found on this device'
+        troubleshootingSteps = [
+          'Check if your device has a camera',
+          'Try using a different browser',
+          'Restart your browser'
+        ]
       } else if (err.name === 'NotReadableError') {
-        errorMessage = 'Camera is already in use by another application.'
+        errorMessage = 'Camera is already in use'
+        troubleshootingSteps = [
+          'Close other apps that might be using the camera',
+          'Restart your browser',
+          'Try a different browser'
+        ]
       } else if (err.name === 'OverconstrainedError') {
-        errorMessage = 'Camera does not support the requested video quality.'
+        errorMessage = 'Camera does not support requested settings'
+        troubleshootingSteps = [
+          'Try a different browser',
+          'Check camera capabilities',
+          'Try on a different device'
+        ]
       } else if (err.name === 'SecurityError') {
-        errorMessage = 'Camera access blocked due to security restrictions.'
+        errorMessage = 'Camera access blocked for security reasons'
+        troubleshootingSteps = [
+          'Make sure you\'re on HTTPS (required for camera access)',
+          'Check if you\'re on the same WiFi network as the server',
+          'Try a different browser'
+        ]
+      } else if (err.message?.includes('Camera not supported')) {
+        errorMessage = 'Camera not supported on this browser'
+        troubleshootingSteps = [
+          'Try Chrome, Firefox, or Safari',
+          'Update your browser to the latest version',
+          'Try on a different device'
+        ]
       }
 
       setError(errorMessage)
       setHasPermission(false)
+
+      // Show troubleshooting steps in console
+      if (troubleshootingSteps.length > 0) {
+        console.log('🔧 Troubleshooting steps:')
+        troubleshootingSteps.forEach((step, i) => {
+          console.log(`  ${i + 1}. ${step}`)
+        })
+      }
     } finally {
       setIsRequestingPermission(false)
     }
   }, [])
 
-  // Auto-request permissions on mount (only if user has likely interacted)
+  // Initialize camera permission status
   useEffect(() => {
-    // Check if user has recently interacted with the page
-    const hasRecentInteraction = sessionStorage.getItem('camera_interaction')
-
-    if (hasPermission === null && !hasRecentInteraction) {
-      // Small delay to allow component to render first
-      const timer = setTimeout(() => {
-        console.log('📸 Camera: Auto-requesting permissions on component mount')
-        requestCameraPermission()
-      }, 500)
-
-      return () => clearTimeout(timer)
-    }
-  }, [hasPermission, requestCameraPermission])
+    // Just set initial state, don't auto-request permissions
+    console.log('📸 Camera: Component mounted, waiting for user interaction')
+  }, [])
 
   // Mark that user has interacted when they click anything
   const handleUserInteraction = () => {
@@ -151,18 +228,22 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
       <CardContent className="space-y-4">
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-            <p className="text-red-800 text-sm">{error}</p>
-            {error.includes('Camera access denied') && (
-              <div className="mt-2 text-xs text-red-700">
-                <p><strong>How to fix:</strong></p>
-                <ol className="list-decimal list-inside mt-1 space-y-1">
-                  <li>Click the "Grant Camera Access" button above</li>
-                  <li>Allow camera permissions in the browser popup</li>
-                  <li>If no popup appears, check browser settings</li>
-                  <li>Try refreshing the page</li>
-                </ol>
-              </div>
-            )}
+            <p className="text-red-800 text-sm font-medium">{error}</p>
+            <div className="mt-3 text-xs text-red-700">
+              <p className="font-medium mb-2">🔧 Troubleshooting steps:</p>
+              <ol className="list-decimal list-inside space-y-1">
+                <li>Click the "Grant Camera Access" button above</li>
+                <li>Look for a browser popup asking for camera permission</li>
+                <li>If no popup appears, check your browser's address bar</li>
+                <li>Click the camera icon in the address bar to allow access</li>
+                <li>Try refreshing the page and clicking the button again</li>
+                <li>Make sure no other apps are using the camera</li>
+                <li>Try a different browser (Chrome, Firefox, Safari)</li>
+              </ol>
+              <p className="mt-2 text-blue-600 font-medium">
+                💡 Tip: Check your browser settings → Privacy → Camera permissions
+              </p>
+            </div>
           </div>
         )}
 
