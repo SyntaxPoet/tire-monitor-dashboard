@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useCallback } from 'react'
+import { useRef, useState, useCallback, useEffect } from 'react'
 import Webcam from 'react-webcam'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -17,6 +17,7 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
   const [isCapturing, setIsCapturing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hasPermission, setHasPermission] = useState<boolean | null>(null)
+  const [isRequestingPermission, setIsRequestingPermission] = useState(false)
 
   const capture = useCallback(() => {
     console.log('📸 Camera: Capture button clicked')
@@ -57,6 +58,87 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
     setCapturedImage(null)
   }
 
+  const requestCameraPermission = useCallback(async () => {
+    console.log('📸 Camera: Requesting camera permission...')
+    setIsRequestingPermission(true)
+    setError(null)
+
+    try {
+      // Check if getUserMedia is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera not supported on this device/browser')
+      }
+
+      // Request camera permission explicitly
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: 1280,
+          height: 720,
+          facingMode: 'environment' // Use back camera on mobile
+        },
+        audio: false
+      })
+
+      console.log('📸 Camera: Permission granted successfully')
+
+      // Stop the stream immediately (we'll get it again from react-webcam)
+      stream.getTracks().forEach(track => track.stop())
+
+      setHasPermission(true)
+      setError(null)
+
+      // Force re-render of webcam component
+      setTimeout(() => {
+        if (webcamRef.current) {
+          console.log('📸 Camera: Re-initializing webcam component')
+        }
+      }, 100)
+
+    } catch (err: any) {
+      console.error('📸 Camera: Permission request failed:', err)
+
+      let errorMessage = 'Camera permission denied or failed'
+
+      if (err.name === 'NotAllowedError') {
+        errorMessage = 'Camera access denied. Please allow camera permissions in your browser settings.'
+      } else if (err.name === 'NotFoundError') {
+        errorMessage = 'No camera found on this device.'
+      } else if (err.name === 'NotReadableError') {
+        errorMessage = 'Camera is already in use by another application.'
+      } else if (err.name === 'OverconstrainedError') {
+        errorMessage = 'Camera does not support the requested video quality.'
+      } else if (err.name === 'SecurityError') {
+        errorMessage = 'Camera access blocked due to security restrictions.'
+      }
+
+      setError(errorMessage)
+      setHasPermission(false)
+    } finally {
+      setIsRequestingPermission(false)
+    }
+  }, [])
+
+  // Auto-request permissions on mount (only if user has likely interacted)
+  useEffect(() => {
+    // Check if user has recently interacted with the page
+    const hasRecentInteraction = sessionStorage.getItem('camera_interaction')
+
+    if (hasPermission === null && !hasRecentInteraction) {
+      // Small delay to allow component to render first
+      const timer = setTimeout(() => {
+        console.log('📸 Camera: Auto-requesting permissions on component mount')
+        requestCameraPermission()
+      }, 500)
+
+      return () => clearTimeout(timer)
+    }
+  }, [hasPermission, requestCameraPermission])
+
+  // Mark that user has interacted when they click anything
+  const handleUserInteraction = () => {
+    sessionStorage.setItem('camera_interaction', 'true')
+  }
+
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
@@ -70,6 +152,17 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3">
             <p className="text-red-800 text-sm">{error}</p>
+            {error.includes('Camera access denied') && (
+              <div className="mt-2 text-xs text-red-700">
+                <p><strong>How to fix:</strong></p>
+                <ol className="list-decimal list-inside mt-1 space-y-1">
+                  <li>Click the "Grant Camera Access" button above</li>
+                  <li>Allow camera permissions in the browser popup</li>
+                  <li>If no popup appears, check browser settings</li>
+                  <li>Try refreshing the page</li>
+                </ol>
+              </div>
+            )}
           </div>
         )}
 
@@ -102,8 +195,20 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
                   <div className="text-center p-4">
                     <Camera className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-600 text-sm">Camera access required</p>
-                    <p className="text-gray-500 text-xs">Please allow camera permissions</p>
+                    <p className="text-gray-600 text-sm mb-4">Camera access required</p>
+                                      <Button
+                    onClick={() => {
+                      handleUserInteraction()
+                      requestCameraPermission()
+                    }}
+                    disabled={isRequestingPermission}
+                    className="mb-2"
+                  >
+                    {isRequestingPermission ? 'Requesting...' : 'Grant Camera Access'}
+                  </Button>
+                    <p className="text-gray-500 text-xs">
+                      Click the button above to allow camera access
+                    </p>
                   </div>
                 </div>
               )}
@@ -116,16 +221,45 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
               {/* Debug Info */}
               <div className="text-xs text-gray-500 mb-4 p-2 bg-gray-50 rounded">
                 <p>Camera Status: {hasPermission === null ? 'Initializing...' : hasPermission ? '✅ Ready' : '❌ Access Denied'}</p>
+                <p>Permission Request: {isRequestingPermission ? 'In Progress...' : 'Idle'}</p>
                 <p>Device: {typeof window !== 'undefined' ? (window.navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop') : 'Unknown'}</p>
               </div>
+
+              {/* Permission Request Button */}
+              {hasPermission === false && (
+                <div className="mb-4">
+                  <Button
+                    onClick={() => {
+                      handleUserInteraction()
+                      requestCameraPermission()
+                    }}
+                    disabled={isRequestingPermission}
+                    variant="outline"
+                    className="w-full"
+                  >
+                    {isRequestingPermission ? '🔄 Requesting Camera Access...' : '📷 Grant Camera Access'}
+                  </Button>
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    Click to manually request camera permissions
+                  </p>
+                </div>
+              )}
               <Button
-                onClick={capture}
+                onClick={() => {
+                  handleUserInteraction()
+                  capture()
+                }}
                 size="lg"
                 className="w-full"
-                disabled={hasPermission === false}
+                disabled={hasPermission === false || isCapturing}
               >
                 <Camera className="h-4 w-4 mr-2" />
-                {hasPermission === false ? 'Camera Access Required' : 'Capture Photo'}
+                {hasPermission === false
+                  ? 'Camera Access Required'
+                  : isCapturing
+                    ? 'Processing...'
+                    : 'Capture Photo'
+                }
               </Button>
             </div>
           </div>
