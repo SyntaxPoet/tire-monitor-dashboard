@@ -42,8 +42,8 @@ A comprehensive tire monitoring application that uses AI-powered image analysis 
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/tire-monitor.git
-   cd tire-monitor
+   git clone https://github.com/SyntaxPoet/tire-monitor-dashboard.git
+   cd tire-monitor-dashboard
    ```
 
 2. **Install dependencies**
