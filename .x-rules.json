@@ -1,0 +1,101 @@
+{
+  "name": "Tire Monitor Development Rules",
+  "version": "1.0.0",
+  "description": "Critical rules to check when using /x slash command",
+  "rules": [
+    {
+      "id": "env-vars-first",
+      "category": "Environment",
+      "priority": "CRITICAL",
+      "title": "Check Environment Variables First",
+      "description": "Always verify DATABASE_URL and other env vars before debugging database issues",
+      "commands": [
+        "echo $DATABASE_URL",
+        "cat .env",
+        "ls -la dev.db"
+      ],
+      "expected": "DATABASE_URL should be set to 'file:./dev.db'"
+    },
+    {
+      "id": "build-errors",
+      "category": "Build",
+      "priority": "HIGH", 
+      "title": "Check Build Errors Before API Issues",
+      "description": "Module import/export errors prevent API routes from loading",
+      "commands": [
+        "npm run build",
+        "Check for ES module vs CommonJS conflicts"
+      ],
+      "expected": "Clean compilation without import/export errors"
+    },
+    {
+      "id": "database-connection",
+      "category": "Database",
+      "priority": "CRITICAL",
+      "title": "Verify Database Connection",
+      "description": "Ensure Prisma client can connect to database",
+      "commands": [
+        "npx prisma db push",
+        "npx prisma generate",
+        "Test database file permissions"
+      ],
+      "expected": "Database accessible and schema in sync"
+    },
+    {
+      "id": "api-reachability",
+      "category": "API",
+      "priority": "HIGH",
+      "title": "Test API Endpoints Directly",
+      "description": "Verify API routes respond before debugging frontend",
+      "commands": [
+        "curl http://localhost:3000/api/vehicles",
+        "Check server console for 500 errors"
+      ],
+      "expected": "API should return 200 or valid error response"
+    },
+    {
+      "id": "comprehensive-logging",
+      "category": "Debugging",
+      "priority": "MEDIUM",
+      "title": "Add Comprehensive Logging",
+      "description": "Implement detailed logging at all critical points",
+      "template": "console.log('🔍 COMPONENT: Operation started')",
+      "expected": "Clear visibility into application flow"
+    },
+    {
+      "id": "nuclear-reset",
+      "category": "Emergency",
+      "priority": "LOW",
+      "title": "Nuclear Reset Protocol",
+      "description": "Complete system reset when debugging exceeds 2 hours",
+      "commands": [
+        "taskkill /F /IM node.exe /T",
+        "rm -rf node_modules .next src/generated",
+        "npm install",
+        "npx prisma generate",
+        "npx prisma db push",
+        "npm run dev"
+      ],
+      "expected": "Fresh system state"
+    }
+  ],
+  "triggers": {
+    "/x": "Display all rules and run critical checks",
+    "/x env": "Check environment variables only", 
+    "/x db": "Check database connection only",
+    "/x api": "Test API endpoints only",
+    "/x reset": "Run nuclear reset protocol"
+  },
+  "checkOrder": [
+    "env-vars-first",
+    "build-errors", 
+    "database-connection",
+    "api-reachability",
+    "comprehensive-logging"
+  ],
+  "emergencyProtocol": {
+    "condition": "If debugging exceeds 2 hours",
+    "action": "Run nuclear-reset protocol",
+    "approval": "Required before executing destructive commands"
+  }
+}

@@ -1,0 +1,126 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Vehicle {
+  id          String   @id @default(cuid())
+  name        String
+  make        String?
+  model       String?
+  year        Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tires       Tire[]
+
+  @@map("vehicles")
+}
+
+model Tire {
+  id          String   @id @default(cuid())
+  vehicleId   String
+  position    TirePosition // FRONT_LEFT, FRONT_RIGHT, REAR_LEFT, REAR_RIGHT
+  size        String?  // e.g., "225/50R17"
+  brand       String?
+  installedAt DateTime?
+  mileageAtInstall Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  photos      TirePhoto[]
+  measurements Measurement[]
+  kpis        KPI[]
+
+  @@map("tires")
+}
+
+model TirePhoto {
+  id          String   @id @default(cuid())
+  tireId      String
+  filePath    String
+  fileName    String
+  takenAt     DateTime @default(now())
+  notes       String?
+  processed   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  tire        Tire      @relation(fields: [tireId], references: [id], onDelete: Cascade)
+  measurements Measurement[]
+
+  @@map("tire_photos")
+}
+
+model Measurement {
+  id          String   @id @default(cuid())
+  tireId      String
+  photoId     String?
+  type        MeasurementType // PRESSURE, TREAD_DEPTH, WEAR_PATTERN, SIDEWALL_CONDITION
+  value       Float
+  unit        String   // psi, mm, percentage, etc.
+  confidence  Float?   // AI confidence score 0-1
+  notes       String?
+  measuredAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  tire        Tire      @relation(fields: [tireId], references: [id], onDelete: Cascade)
+  photo       TirePhoto? @relation(fields: [photoId], references: [id])
+
+  @@map("measurements")
+}
+
+model KPI {
+  id          String   @id @default(cuid())
+  tireId      String
+  type        KPIType  // TREAD_LIFE_REMAINING, PRESSURE_STABILITY, WEAR_RATE, OVERALL_HEALTH
+  value       Float
+  unit        String
+  trend       TrendDirection? // IMPROVING, STABLE, DECLINING
+  calculatedAt DateTime @default(now())
+  validUntil  DateTime?
+  createdAt   DateTime @default(now())
+
+  tire        Tire     @relation(fields: [tireId], references: [id], onDelete: Cascade)
+
+  @@map("kpis")
+}
+
+enum TirePosition {
+  FRONT_LEFT
+  FRONT_RIGHT
+  REAR_LEFT
+  REAR_RIGHT
+}
+
+enum MeasurementType {
+  PRESSURE
+  TREAD_DEPTH
+  WEAR_PATTERN
+  SIDEWALL_CONDITION
+  TEMPERATURE
+  ALIGNMENT
+}
+
+enum KPIType {
+  TREAD_LIFE_REMAINING
+  PRESSURE_STABILITY
+  WEAR_RATE
+  OVERALL_HEALTH
+  PRESSURE_TREND
+  MAINTENANCE_NEEDED
+}
+
+enum TrendDirection {
+  IMPROVING
+  STABLE
+  DECLINING
+}
