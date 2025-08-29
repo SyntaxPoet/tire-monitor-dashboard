@@ -39,6 +39,7 @@ export default function Home() {
     alerts: 0
   })
   const [showAddVehicle, setShowAddVehicle] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
 
   // Critical: Check environment on startup
   useEffect(() => {
@@ -113,6 +114,7 @@ export default function Home() {
       type: file.type,
       selectedTire
     })
+    console.log('📸 CLIENT: Current URL:', typeof window !== 'undefined' ? window.location.href : 'Server-side')
 
     try {
       // Find the tire for the selected position
@@ -237,7 +239,11 @@ export default function Home() {
               <h1 className="text-2xl font-bold text-gray-900">Tire Monitor</h1>
             </div>
             <div className="flex items-center gap-4">
-              <Button variant="outline" size="sm">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowSettings(true)}
+              >
                 <Settings className="h-4 w-4 mr-2" />
                 Settings
               </Button>
@@ -392,6 +398,75 @@ export default function Home() {
               console.log('✅ CLIENT: Vehicle data refresh initiated')
             }}
           />
+        )}
+
+        {/* Settings Modal */}
+        {showSettings && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">Settings</h3>
+                <button
+                  onClick={() => setShowSettings(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">AI Learning</h4>
+                  <p className="text-sm text-gray-600 mb-3">
+                    Configure how the AI learns from your photos
+                  </p>
+                  <div className="space-y-2">
+                    <label className="flex items-center">
+                      <input type="checkbox" className="mr-2" defaultChecked />
+                      <span className="text-sm">Enable automatic photo analysis</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input type="checkbox" className="mr-2" defaultChecked />
+                      <span className="text-sm">Save photos for ML training</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">Notifications</h4>
+                  <div className="space-y-2">
+                    <label className="flex items-center">
+                      <input type="checkbox" className="mr-2" defaultChecked />
+                      <span className="text-sm">Maintenance reminders</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input type="checkbox" className="mr-2" defaultChecked />
+                      <span className="text-sm">Tire health alerts</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="border rounded-lg p-4">
+                  <h4 className="font-medium mb-2">System Info</h4>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <p>Vehicles: {stats.totalVehicles}</p>
+                    <p>Tires: {stats.totalTires}</p>
+                    <p>Photos Today: {stats.photosToday}</p>
+                    <p>Server: http://localhost:3001</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-4">
+                  <Button
+                    onClick={() => setShowSettings(false)}
+                    className="flex-1"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

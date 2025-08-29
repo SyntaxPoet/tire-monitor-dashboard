@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 import { Brain, TrendingUp, Users, Target, Clock, Star } from 'lucide-react';
 
 interface LearningStats {
@@ -100,12 +98,17 @@ export function ContinuousLearningStats() {
           <div className="space-y-2">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">Training Samples</span>
-              <Badge variant={stats.totalSamples > 10 ? "default" : "secondary"}>
+              <span className={`text-xs px-2 py-1 rounded-full ${stats.totalSamples > 10 ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"}`}>
                 {stats.totalSamples}/50 needed
-              </Badge>
+              </span>
             </div>
-            <Progress value={retrainingProgress} className="h-2" />
-            <p className="text-xs text-muted-foreground">
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${retrainingProgress}%` }}
+              ></div>
+            </div>
+            <p className="text-xs text-gray-600">
               {stats.samplesUntilRetrain > 0
                 ? `${stats.samplesUntilRetrain} more samples until next retraining`
                 : 'Ready for retraining! 🎯'
@@ -162,18 +165,18 @@ export function ContinuousLearningStats() {
           <div className="pt-4 border-t">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
+                <Clock className="h-4 w-4 text-gray-400" />
                 <span className="text-sm font-medium">Next Retraining</span>
               </div>
-              <Badge variant={hoursUntilRetrain < 6 ? "default" : "secondary"}>
+              <span className={`text-xs px-2 py-1 rounded-full ${hoursUntilRetrain < 6 ? "bg-orange-100 text-orange-800" : "bg-gray-100 text-gray-800"}`}>
                 {hoursUntilRetrain > 24
                   ? `${Math.floor(hoursUntilRetrain / 24)} days`
                   : `${hoursUntilRetrain}h`
                 }
-              </Badge>
+              </span>
             </div>
 
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-gray-600 mt-1">
               Models automatically improve with your tire photos and feedback
             </p>
           </div>
