@@ -362,27 +362,42 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
         {!capturedImage ? (
           <div className="space-y-4">
             <div className="relative rounded-lg overflow-hidden bg-gray-100">
-              <Webcam
-                ref={webcamRef}
-                audio={false}
-                screenshotFormat="image/jpeg"
-                videoConstraints={{
-                  width: 1280,
-                  height: 720,
-                  facingMode: 'environment' // Use back camera on mobile
-                }}
-                className="w-full h-64 object-cover"
-                onUserMedia={() => {
-                  console.log('📸 Camera: Access granted')
-                  setHasPermission(true)
-                  setError(null)
-                }}
-                onUserMediaError={(err) => {
-                  console.error('📸 Camera: Access denied or failed:', err)
-                  setHasPermission(false)
-                  setError('Camera access denied. Please allow camera permissions and refresh the page.')
-                }}
-              />
+                                   <Webcam
+                       ref={webcamRef}
+                       audio={false}
+                       screenshotFormat="image/jpeg"
+                       videoConstraints={{
+                         width: 1280,
+                         height: 720,
+                         facingMode: 'environment' // Use back camera on mobile
+                       }}
+                       className="w-full h-64 object-cover"
+                       onUserMedia={() => {
+                         console.log('📸 Camera: Access granted')
+                         setHasPermission(true)
+                         setError(null)
+                       }}
+                       onUserMediaError={(err) => {
+                         console.error('📸 Camera: Access denied or failed:', err)
+                         setHasPermission(false)
+
+                         // Provide specific error messages
+                         let errorMessage = 'Camera access failed. '
+                         if (err.name === 'NotAllowedError') {
+                           errorMessage += 'Please allow camera permissions in your browser settings.'
+                         } else if (err.name === 'NotFoundError') {
+                           errorMessage += 'No camera found on this device.'
+                         } else if (err.name === 'NotReadableError') {
+                           errorMessage += 'Camera is already in use by another app.'
+                         } else if (err.name === 'OverconstrainedError') {
+                           errorMessage += 'Camera does not support the requested settings.'
+                         } else {
+                           errorMessage += 'Please check your browser settings and try again.'
+                         }
+
+                         setError(errorMessage)
+                       }}
+                     />
 
               {hasPermission === false && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
@@ -411,12 +426,67 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
                 Position your camera to capture the entire tire, including sidewall and tread
               </p>
 
-              {/* Debug Info */}
-              <div className="text-xs text-gray-500 mb-4 p-2 bg-gray-50 rounded">
-                <p>Camera Status: {hasPermission === null ? 'Initializing...' : hasPermission ? '✅ Ready' : '❌ Access Denied'}</p>
-                <p>Permission Request: {isRequestingPermission ? 'In Progress...' : 'Idle'}</p>
-                <p>Device: {typeof window !== 'undefined' ? (window.navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop') : 'Unknown'}</p>
-              </div>
+                                   {/* Debug Info */}
+                     <div className="text-xs text-gray-500 mb-4 p-2 bg-gray-50 rounded">
+                       <p>Camera Status: {hasPermission === null ? 'Initializing...' : hasPermission ? '✅ Ready' : '❌ Access Denied'}</p>
+                       <p>Permission Request: {isRequestingPermission ? 'In Progress...' : 'Idle'}</p>
+                       <p>Device: {typeof window !== 'undefined' ? (window.navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop') : 'Unknown'}</p>
+                       {browserCompatibility && (
+                         <p>Browser: {browserCompatibility.browserName} {browserCompatibility.browserVersion} {browserCompatibility.supportsCamera ? '(✅ Camera Supported)' : '(❌ Camera Not Supported)'}</p>
+                       )}
+                     </div>
+
+                     {/* Debug Buttons */}
+                     <div className="mb-4 flex gap-2">
+                       <Button
+                         onClick={() => {
+                           console.log('🔍 DEBUG INFO:')
+                           console.log('Browser:', navigator.userAgent)
+                           console.log('Has mediaDevices:', !!navigator.mediaDevices)
+                           console.log('Has getUserMedia:', !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia))
+                           console.log('Browser compatibility:', browserCompatibility)
+                           console.log('Has permission:', hasPermission)
+                           alert('Debug info logged to console. Press F12 to view.')
+                         }}
+                         variant="outline"
+                         size="sm"
+                         className="text-xs"
+                       >
+                         🔍 Debug Info
+                       </Button>
+
+                       <Button
+                         onClick={async () => {
+                           console.log('🧪 TESTING BASIC CAMERA API...')
+                           try {
+                             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                               throw new Error('getUserMedia not supported')
+                             }
+
+                             const stream = await navigator.mediaDevices.getUserMedia({
+                               video: { width: 640, height: 480 },
+                               audio: false
+                             })
+
+                             console.log('✅ Basic camera API works!')
+                             console.log('Stream tracks:', stream.getTracks().length)
+
+                             // Stop the stream immediately
+                             stream.getTracks().forEach(track => track.stop())
+
+                             alert('✅ Camera API is working! The issue is with the webcam component.')
+                           } catch (err: any) {
+                             console.error('❌ Basic camera API failed:', err)
+                             alert(`❌ Camera API failed: ${err.message}`)
+                           }
+                         }}
+                         variant="outline"
+                         size="sm"
+                         className="text-xs"
+                       >
+                         🧪 Test Camera API
+                       </Button>
+                     </div>
 
                                    {/* Permission Request Button */}
                      {hasPermission === false && (
