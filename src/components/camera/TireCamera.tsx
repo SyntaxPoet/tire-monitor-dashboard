@@ -67,13 +67,36 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
     let recommendations: string[] = []
 
     if (!supportsCamera) {
-      recommendations = [
-        'Use Chrome (recommended) - Download from google.com/chrome',
-        'Use Firefox - Download from mozilla.org/firefox',
-        'Use Safari (iOS/Mac) - Already installed on Apple devices',
-        'Avoid Internet Explorer, older Edge versions',
-        'Update your browser to the latest version'
-      ]
+      // Check if it's a known browser that should support it
+      if (browserInfo.name === 'Chrome' && parseInt(browserInfo.version) >= 14) {
+        recommendations = [
+          'Chrome should support camera - try refreshing the page',
+          'Check if you\'re in incognito/private mode',
+          'Disable browser extensions temporarily',
+          'Try restarting Chrome completely'
+        ]
+      } else if (browserInfo.name === 'Firefox' && parseInt(browserInfo.version) >= 17) {
+        recommendations = [
+          'Firefox should support camera - try refreshing the page',
+          'Check media permissions in Firefox settings',
+          'Try disabling browser extensions'
+        ]
+      } else if (browserInfo.name === 'Safari') {
+        recommendations = [
+          'Safari should support camera - try these steps:',
+          'Settings → Safari → Camera → Allow',
+          'Clear History and Website Data',
+          'Restart Safari completely'
+        ]
+      } else {
+        recommendations = [
+          '❌ CRITICAL: This browser does not support camera access',
+          '✅ RECOMMENDED: Use Chrome, Firefox, or Safari',
+          '✅ Download Chrome: google.com/chrome',
+          '✅ Or use the file upload option below',
+          'ℹ️  Some browsers (especially older versions) lack camera API support'
+        ]
+      }
     }
 
     return {
@@ -89,14 +112,32 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
     const file = event.target.files?.[0]
     if (file && file.type.startsWith('image/')) {
       console.log('📸 File upload: Processing uploaded image')
+      setIsCapturing(true)
       const reader = new FileReader()
       reader.onload = (e) => {
         const imageData = e.target?.result as string
         onCapture(imageData, file)
         setCapturedImage(imageData)
+        setIsCapturing(false)
+        console.log('📸 File upload: Successfully processed image')
+      }
+      reader.onerror = (error) => {
+        console.error('📸 File upload: Failed to read file', error)
+        setError('Failed to process uploaded image')
+        setIsCapturing(false)
       }
       reader.readAsDataURL(file)
     }
+  }
+
+  // Alternative: Try to use input with capture attribute for mobile
+  const handleCameraCapture = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.capture = 'environment' // Try to use back camera on mobile
+    input.onchange = (e) => handleFileUpload(e as any)
+    input.click()
   }
 
   const capture = useCallback(() => {
@@ -320,20 +361,33 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
       <CardContent className="space-y-4">
         {/* Browser Compatibility Warning */}
         {browserCompatibility && !browserCompatibility.supportsCamera && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 mb-4">
-            <p className="text-amber-800 text-sm font-medium">
-              ⚠️ Camera Not Supported in {browserCompatibility.browserName}
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <p className="text-red-800 text-lg font-bold">
+              🚫 Camera API Not Supported in {browserCompatibility.browserName}
             </p>
-            <div className="mt-2 text-xs text-amber-700">
-              <p className="font-medium mb-1">Recommended Browsers:</p>
-              <ul className="list-disc list-inside space-y-1">
-                {browserCompatibility.recommendations.slice(0, 3).map((rec, i) => (
-                  <li key={i}>{rec}</li>
-                ))}
-              </ul>
-              <p className="mt-2 text-blue-600 font-medium">
-                💡 Or use the file upload option below
-              </p>
+            <div className="mt-3 text-sm text-red-700">
+              <p className="font-medium mb-2">This browser doesn't support camera access. Here are your options:</p>
+
+              {/* Primary Solution */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
+                <p className="font-semibold text-blue-800 mb-2">✅ RECOMMENDED: Use a Modern Browser</p>
+                <ul className="list-disc list-inside space-y-1 text-blue-700">
+                  {browserCompatibility.recommendations.slice(0, 3).map((rec, i) => (
+                    <li key={i}>{rec}</li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Alternative Solution */}
+              <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                <p className="font-semibold text-green-800 mb-2">📁 ALTERNATIVE: Upload Photos from Device</p>
+                <p className="text-green-700 mb-3">You can still take tire photos and get AI analysis using file upload:</p>
+                <ol className="list-decimal list-inside space-y-1 text-green-700">
+                  <li>Take photos with your phone's camera app</li>
+                  <li>Use the upload button below to select photos</li>
+                  <li>Get the same AI tire analysis and tracking</li>
+                </ol>
+              </div>
             </div>
           </div>
         )}
@@ -361,43 +415,45 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
 
         {!capturedImage ? (
           <div className="space-y-4">
-            <div className="relative rounded-lg overflow-hidden bg-gray-100">
-                                   <Webcam
-                       ref={webcamRef}
-                       audio={false}
-                       screenshotFormat="image/jpeg"
-                       videoConstraints={{
-                         width: 1280,
-                         height: 720,
-                         facingMode: 'environment' // Use back camera on mobile
-                       }}
-                       className="w-full h-64 object-cover"
-                       onUserMedia={() => {
-                         console.log('📸 Camera: Access granted')
-                         setHasPermission(true)
-                         setError(null)
-                       }}
-                       onUserMediaError={(err) => {
-                         console.error('📸 Camera: Access denied or failed:', err)
-                         setHasPermission(false)
+            {/* Only show webcam if camera API is supported */}
+            {browserCompatibility?.supportsCamera !== false && (
+              <div className="relative rounded-lg overflow-hidden bg-gray-100">
+                <Webcam
+                  ref={webcamRef}
+                  audio={false}
+                  screenshotFormat="image/jpeg"
+                  videoConstraints={{
+                    width: 1280,
+                    height: 720,
+                    facingMode: 'environment' // Use back camera on mobile
+                  }}
+                  className="w-full h-64 object-cover"
+                  onUserMedia={() => {
+                    console.log('📸 Camera: Access granted')
+                    setHasPermission(true)
+                    setError(null)
+                  }}
+                  onUserMediaError={(err) => {
+                    console.error('📸 Camera: Access denied or failed:', err)
+                    setHasPermission(false)
 
-                         // Provide specific error messages
-                         let errorMessage = 'Camera access failed. '
-                         if (err.name === 'NotAllowedError') {
-                           errorMessage += 'Please allow camera permissions in your browser settings.'
-                         } else if (err.name === 'NotFoundError') {
-                           errorMessage += 'No camera found on this device.'
-                         } else if (err.name === 'NotReadableError') {
-                           errorMessage += 'Camera is already in use by another app.'
-                         } else if (err.name === 'OverconstrainedError') {
-                           errorMessage += 'Camera does not support the requested settings.'
-                         } else {
-                           errorMessage += 'Please check your browser settings and try again.'
-                         }
+                    // Provide specific error messages
+                    let errorMessage = 'Camera access failed. '
+                    if (err.name === 'NotAllowedError') {
+                      errorMessage += 'Please allow camera permissions in your browser settings.'
+                    } else if (err.name === 'NotFoundError') {
+                      errorMessage += 'No camera found on this device.'
+                    } else if (err.name === 'NotReadableError') {
+                      errorMessage += 'Camera is already in use by another app.'
+                    } else if (err.name === 'OverconstrainedError') {
+                      errorMessage += 'Camera does not support the requested settings.'
+                    } else {
+                      errorMessage += 'Please check your browser settings and try again.'
+                    }
 
-                         setError(errorMessage)
-                       }}
-                     />
+                    setError(errorMessage)
+                  }}
+                />
 
               {hasPermission === false && (
                 <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
@@ -420,8 +476,22 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
                   </div>
                 </div>
               )}
+
+              {/* Show camera placeholder when API not supported */}
+              {browserCompatibility?.supportsCamera === false && (
+                <div className="relative rounded-lg overflow-hidden bg-gray-100 h-64 flex items-center justify-center">
+                  <div className="text-center p-6">
+                    <Camera className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 font-medium">Camera Not Available</p>
+                    <p className="text-sm text-gray-400 mt-1">Use the upload options below</p>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="text-center">
+
+            {/* Only show debug info and controls if camera API is supported */}
+            {browserCompatibility?.supportsCamera !== false && (
+              <div className="text-center">
               <p className="text-sm text-gray-600 mb-4">
                 Position your camera to capture the entire tire, including sidewall and tread
               </p>
@@ -508,19 +578,59 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
 
                          {/* File Upload Fallback */}
                          {browserCompatibility && !browserCompatibility.supportsCamera && (
-                           <div className="border-t pt-3 mt-3">
-                             <p className="text-sm font-medium text-gray-700 mb-2">
-                               📁 Alternative: Upload Photo from Device
+                           <div className="border-t pt-4 mt-4">
+                             <p className="text-lg font-bold text-gray-800 mb-3">
+                               📸 Take Photos with Your Phone Camera
                              </p>
-                             <input
-                               type="file"
-                               accept="image/*"
-                               onChange={handleFileUpload}
-                               className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                             />
-                             <p className="text-xs text-gray-500 mt-1">
-                               Choose an existing photo from your device
-                             </p>
+                             <div className="space-y-3">
+                               {/* Option 1: Direct Camera Capture */}
+                               <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                                 <p className="font-semibold text-green-800 mb-2">📱 Option 1: Use Phone Camera App</p>
+                                 <p className="text-sm text-green-700 mb-2">Take photos with your phone's built-in camera app, then upload them here:</p>
+                                 <Button
+                                   onClick={() => {
+                                     const input = document.createElement('input')
+                                     input.type = 'file'
+                                     input.accept = 'image/*'
+                                     input.multiple = true
+                                     input.onchange = (e) => handleFileUpload(e as any)
+                                     input.click()
+                                   }}
+                                   className="w-full bg-green-600 hover:bg-green-700"
+                                   disabled={isCapturing}
+                                 >
+                                   <Camera className="h-4 w-4 mr-2" />
+                                   {isCapturing ? 'Processing...' : '📁 Upload Tire Photos'}
+                                 </Button>
+                               </div>
+
+                               {/* Option 2: Try HTML5 Camera Capture */}
+                               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                 <p className="font-semibold text-blue-800 mb-2">📷 Option 2: Try Direct Camera Capture</p>
+                                 <p className="text-sm text-blue-700 mb-2">Some mobile browsers support direct camera capture:</p>
+                                 <Button
+                                   onClick={handleCameraCapture}
+                                   variant="outline"
+                                   className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
+                                   disabled={isCapturing}
+                                 >
+                                   <Camera className="h-4 w-4 mr-2" />
+                                   {isCapturing ? 'Processing...' : '📷 Try Camera Capture'}
+                                 </Button>
+                               </div>
+
+                               {/* Instructions */}
+                               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                                 <p className="font-semibold text-yellow-800 mb-2">📋 How to Use:</p>
+                                 <ol className="text-sm text-yellow-700 list-decimal list-inside space-y-1">
+                                   <li>Open your phone's camera app</li>
+                                   <li>Take clear photos of your tires</li>
+                                   <li>Click "Upload Tire Photos" above</li>
+                                   <li>Select the photos you just took</li>
+                                   <li>Get AI analysis and tracking as usual!</li>
+                                 </ol>
+                               </div>
+                             </div>
                            </div>
                          )}
                        </div>
@@ -543,6 +653,7 @@ export function TireCamera({ onCapture, tirePosition }: TireCameraProps) {
                 }
               </Button>
             </div>
+            )}
           </div>
         ) : (
           <div className="space-y-4">
